@@ -3,25 +3,18 @@ Replacement for RUSA ACP brevet time calculator
 (see https://rusa.org/octime_acp.html)
 
 """
+
 import flask
-import arrow # Replacement for datetime, based on moment.js
-import acp_times # Brevet time calculations
-import config
+import arrow  # Replacement for datetime, based on moment.js
+import acp_times  # Brevet time calculations
 import logging
 import os
-from pymongo import MongoClient
-from secrets import token_hex as gen_secret_key
 
 ###
 # Globals
 ###
 
 app = flask.Flask(__name__)
-CONFIG = config.configuration()
-
-mongo = MongoClient('mongodb://mongodb', 27017)
-collection = mongo.collection
-app.secret_key = gen_secret_key()
 
 
 ###
@@ -32,8 +25,6 @@ app.secret_key = gen_secret_key()
 @app.route("/index")
 def index():
     app.logger.debug("Main page entry")
-    if "client_id" not in flask.session:
-        flask.session["client_id"] = gen_secret_key()
     return flask.render_template('calc.html')
 
 
@@ -42,12 +33,14 @@ def page_not_found(_):
     app.logger.debug("Page not found")
     return flask.render_template('404.html'), 404
 
+
 ###############
 #
 # AJAX request handlers
 #   These return JSON, rather than rendering pages.
 #
 ###############
+
 @app.get("/_calc_times")
 def calculate_times():
     """
@@ -83,45 +76,13 @@ def calculate_times():
 
 #############
 
-
-
-@app.post('/_submit')
-def submit():
-    try:
-        collection.controls.update_one(
-            {"session": flask.session["client_id"]},
-            {"$set": flask.request.json},
-            upsert=True
-        )
-        return {"success": True}
-    except ValueError as exc:
-        return flask.jsonify({"error": str(exc)}), 400
-    except Exception:
-        return flask.jsonify({"error": "A server error occurred."}), 500
-
-
-@app.get('/_display')
-def display():
-    try:
-        stored = collection.controls.find_one(
-            {"session": flask.session["client_id"]},
-            {"_id": 0}  # don't return the document ID
-        )
-        if stored is not None:
-            return stored
-        else:
-            return flask.jsonify({"No brevet has been saved for this client."}, 400)
-    except ValueError as exc:
-        return flask.jsonify({"error": str(exc)}), 400
-    except Exception:
-        return flask.jsonify({"error": "A server error occurred."}), 500
+# Remove Submit and Dispaly flask routes
 
 #############
 
-app.debug = CONFIG.DEBUG
-if app.debug:
+if "DEBUG" in os.environ and os.environ["DEBUG"].lower() == "true":
     app.logger.setLevel(logging.DEBUG)
 
 if __name__ == "__main__":
-    print("Opening for global access on port {}".format(CONFIG.PORT))
-    app.run(port=CONFIG.PORT, host="0.0.0.0")
+    print(f"Opening for global access on port {os.environ['PORT']}")
+    app.run(port=int(os.environ["PORT"]), host="0.0.0.0")
