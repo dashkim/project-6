@@ -1,7 +1,7 @@
 from mongoengine import *
 
 
-class CheckpointDoc(EmbeddedDocument):
+class Checkpoint(EmbeddedDocument):
     """
     A MongoEngine EmbeddedDocument containing:
         distance: MongoEngine float field, required, (checkpoint distance in kilometers),
@@ -15,7 +15,7 @@ class CheckpointDoc(EmbeddedDocument):
     close_time = DateTimeField(required=True)
 
 
-class BrevetDoc(Document):
+class Brevet(Document):
     """
     A MongoEngine document containing:
         length: MongoEngine float field, required
