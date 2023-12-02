@@ -1,5 +1,5 @@
 FROM python:3.8
-LABEL maintainer="dkim11@uroegon.edu"
+LABEL maintainer="dkim11@uoregon.edu"
 RUN apt-get update -y
 COPY . /app
 WORKDIR /app

@@ -1,4 +1,6 @@
 Flask
 flask-restful
+flask-cors
 pymongo
 mongoengine
+python-dateutil

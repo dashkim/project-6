@@ -3,8 +3,8 @@ Resource: Brevets
 """
 from flask import Response, request
 from flask_restful import Resource
+from mongoengine.errors import ValidationError
 
-# You need to implement this in database/models.py
 from database.models import Brevet
 
 # MongoEngine queries:
@@ -27,3 +27,29 @@ from database.models import Brevet
 # it from a MongoEngine query object to a JSON and send back the JSON
 # directly instead of letting Flask-RESTful attempt to convert it to a
 # JSON for you.
+
+
+class Brevets(Resource):
+    def get(self):
+        """Get all brevets stored in the database."""
+        try:
+            # Retrieve all brevets and convert to JSON
+            brevets_json = Brevet.objects.to_json()
+            return Response(brevets_json, mimetype="application/json", status=200)
+        except Exception as exc:
+            # Handle unexpected errors
+            return {"error": str(exc)}, 500
+
+    def post(self):
+        """Create a new brevet in the database."""
+        try:
+            # Create a new brevet from the JSON data in the request and save it
+            new_brevet = Brevet(**request.json).save(validate=True)
+            # Return the ID of the newly created brevet
+            return {"id": str(new_brevet.id)}, 201
+        except ValidationError as exc:
+            # Handle validation errors
+            return {"error": str(exc)}, 400
+        except Exception as exc:
+            # Handle unexpected errors
+            return {"error": str(exc)}, 500

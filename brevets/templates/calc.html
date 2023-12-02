@@ -45,10 +45,10 @@
                 <div class="col-md-6">
                     <label>Begins at</label>
                     <input type="datetime-local" name="begin_date" id="begin_date" value="2021-01-01T00:00" />
-                    <button type="button" class="btn btn-primary ml-2" id="submitBtn">Submit</button>1q 
+                    <button type="button" class="btn btn-primary ml-2" id="submitBtn">Submit</button>
                     <button type="button" class="btn btn-secondary ml-2" id="displayBtn">Display</button>
                 </div>
-               <!-- columns 5 to 10 -->
+                <!-- columns 5 to 10 -->
             </div>
             <!-- row -->
             <br />  <!-- a little vertical space -->
@@ -93,41 +93,50 @@
             </div>
             <!-- row -->
             <script type="text/javascript">
+                
+                // Get the URL for the _calc_times endpoint from the server
                 const URL = {{(request.script_root + "/_calc_times")|tojson|safe }};
 
-                function calcTimes(control) {
-                    const milesInput = control.find("input[name='miles']");
+                // Function to calculate open and close times for a control point
+                function calc_times(control) {
                     const brevet_distance = $("select[name='distance']").val();
-                    const initial_time = $("input[name='begin_date']").val();
-                    const control_distance_brevet = control.find("input[name='km']");
-                    const open_times_brevets = control.find("input[name='open']");
-                    const close_times_brevets = control.find("input[name='close']");
+                    const start_time = $("input[name='begin_date']").val();
+                    const control_distance_km = control.find("input[name='km']").val();
+                    const open_time = control.find("input[name='open']");
+                    const close_time = control.find("input[name='close']");
                     const td_notes = control.find("td.notes");
 
-                    const ctrlDist = parseFloat(control_distance_brevet.val());
-
-                    if (ctrlDist > brevet_distance * 1.2) {
-                        alert("Control distance cannot exceed 20% of the brevet distance.");
-                        control_distance_brevet.val("");
-                        milesInput.val("");
-                        initial_time.val("");
+                    // Check if the control distance is negative
+                    if (control_distance_km < 0) {
+                        // Display an alert and clear the row if the condition is met
+                        alert("Control distance cannot be negative.");    
+                        clear_row(control);
                         return;
                     }
 
-                    $.getJSON(URL, { brevet: brevet_distance, control: ctrlDist, start: initial_time })
-                        .done(function (times) {
-                            open_times_brevets.val(moment(times.open).format("YYYY-MM-DDTHH:mm"));
-                            close_times_brevets.val(moment(times.close).format("YYYY-MM-DDTHH:mm"));
+                     // Check if the control distance exceeds 20% of the brevet distance
+                    if (control_distance_km > brevet_distance * 1.2) {
+                        // Display an alert and clear the row if the condition is met
+                        alert("Control distance cannot exceed 20% of the brevet distance.");    
+                        clear_row(control);
+                        return;
+                    }
+                     // Make an asynchronous request to the server for calculation
+                    $.getJSON(URL, {brevet: brevet_distance, control: control_distance_km, start: start_time})
+                        .done(function(times) {
+                            // Update the open and close time inputs with the calculated values
+                            open_time.val(moment(times.open).format("YYYY-MM-DDTHH:mm"));
+                            close_time.val(moment(times.close).format("YYYY-MM-DDTHH:mm"));
                             td_notes.text("");
                         })
-                        .fail(function (err) {
-                            open_times_brevets.val("");
-                            close_times_brevets.val("");
-
-                    });
+                        .fail(function(err) {
+                            // If the request fails, clear the row
+                            clear_row(contol)
+                        });
                 }
 
-                function clearRow(control) {
+                // Helper function to clear the contents of a row
+                function clear_row(control) {
                     control.find("input[name='km']").val("");
                     control.find("input[name='miles']").val("");
                     control.find("input[name='open']").val("");
@@ -135,35 +144,38 @@
                     control.find("td.notes").text("");
                 }
 
-                $(document).ready(function () {
-                    $('input[name="miles"]').change(function (e) {
+                $(document).ready(function() {
+                    // Do the following when the page is finished loading
+                    $('input[name="miles"]').change(function(e) {
                         if (e.target.value.length !== 0) {
-                            const miles = parseFloat($(this).val());
-                            const km = (1.609344 * miles).toFixed(6);
-                            const controlEntry = $(this).parents(".control");
-                            const target = controlEntry.find("input[name='km']");
+                            let miles = parseFloat($(this).val());
+                            let km = (1.609344 * miles).toFixed(6);
+                            console.log("Converted " + miles + " miles to " + km + " kilometers");
+                            let control_entry = $(this).parents(".control")
+                            let target = control_entry.find("input[name='km']");
                             target.val(km);
-                            calcTimes(controlEntry);
+                            // Then calculate times for this entry
+                            calc_times(control_entry);
                         } else {
-                            const controlEntry = $(this).parents(".control");
-                            clearRow(controlEntry);
+                            let control_entry = $(this).parents(".control");
+                            clear_row(control_entry);
                         }
                     });
 
-                    $('input[name="km"]').on('keyup', function (e) {
-                        if (e.keyCode === 13) {
-                            const kmInput = $(this);
-                            const controlEntry = kmInput.parents(".control");
-                            const milesInput = controlEntry.find("input[name='miles']");
-
-                            if (kmInput.val().length === 0) {
-                                clearRow(controlEntry);
-                            } else {
-                                const km = parseFloat(kmInput.val());
-                                const miles = (0.621371 * km).toFixed(6);
-                                milesInput.val(miles);
-                                calcTimes(controlEntry);
-                            }
+                    // Attach an event listener to the 'km' input field for the change event
+                    $('input[name="km"]').change(function(e) {
+                        if (e.target.value.length !== 0) {
+                            let km = parseFloat($(this).val());
+                            let miles = (0.621371 * km).toFixed(6);
+                            console.log("Converted " + km + " km to " + miles + " miles");
+                            let control_entry = $(this).parents(".control")
+                            let target = control_entry.find("input[name='miles']");
+                            target.val(miles);
+                            // Then calculate times for this entry
+                            calc_times(control_entry);
+                        } else {
+                            let control_entry = $(this).parents(".control");
+                            clear_row(control_entry);
                         }
                     });
 
@@ -180,32 +192,42 @@
                         }
                     });
 
+                    // Attach a click event listener to the element with the ID 'submitBtn'
+                    $('#submitBtn').on("click", function() {
 
-                    $('#submitBtn').on("click", function () {
-                        const brevet_dist = $("select[name='distance']").val();
-                        const initial_time = $("input[name='begin_date']").val();
-                        const values = [];
-
+                        // Get values from the form inputs
+                        var brevet_dist = $("select[name='distance']").val();
+                        var start_time = $("input[name='begin_date']").val();
+                        var values = [];
+                    
                         $(".control_time_table .control").each(function() {
-                            const stored_km_brevet = $(this).find("input[name='km']").val();
-                            if (stored_km_brevet.length !== 0) {
-                                const location_val = $(this).find("input[name='location']").val();
-                                values.push({ [stored_km_brevet]: location_val });
+                            var kilometers = $(this).find("input[name='km']").val();
+                            if (kilometers.length !== 0) {
+                                var loc = $(this).find("input[name='location']").val();
+                                var openning = $(this).find("input[name='open']").val();
+                                var closing = $(this).find("input[name='close']").val();
+                                //Add other vairables to be stored in MongoDB
+                                values.push({
+                                    distance: kilometers,
+                                    location: loc,
+                                    open_time: openning,
+                                    close_time: closing
+                                });
                             }
                         });
-                        
+
                         if (values.length === 0){
-                            $("#error-message-container").text("Nothing to be saved").show();
+                            alert("Nothing to be submitted")
                             return;
                         }
-                        
+
                         $.ajax({
                             type: "POST",
-                            url: "/_submit",
+                            url: "http://localhost:5001/api/brevets",
                             data: JSON.stringify({
-                                full_dist: brevet_dist,
-                                start_time: initial_time,
-                                controls: values
+                                length: brevet_dist,
+                                start_time: start_time,
+                                checkpoints: values
                             }),
                             success: function(data) {
                                 // Set back the values after successful submission
@@ -223,37 +245,47 @@
                             // You can also log the error to the console for debugging purposes
                             console.error("Error:", err);
                         });
+                        
                     });
 
-                    $('#displayBtn').on("click", function () {
+                    $('#displayBtn').on("click", function() {
+                        
+                        // Make an asynchronous request to the 'http://localhost:5001/api/brevets' endpoint
+                        $.getJSON("http://localhost:5001/api/brevets")
+                            .done(function(brevet_list) {
+                                if (brevet_list.length === 0) {
+                                    alert("No brevets to be displayed");
+                                    return;
+                                } 
+                                var last_brevet = brevet_list[brevet_list.length - 1];
+                                $("select[name='distance']").val(last_brevet["length"]);
+                                $("input[name='begin_date']").val(moment(last_brevet.start_time).format("YYYY-MM-DDTHH:mm"));
 
-                        $.getJSON("/_display")
-                            .done(function(data) {
-                                // Updated code without the removed function
-                                $("select[name='distance']").val(data.full_dist);
-                                $("input[name='begin_date']").val(moment(data.start_time).format("YYYY-MM-DDTHH:mm"));
-
-                                let row_count = 0;
+                                // Iterate over each control in the control_time_table
+                                var row_count = 0;
                                 $(".control_time_table .control").each(function() {
-                                    if (row_count >= data.controls.length) {
-                                        return false;
+                                    if (row_count >= last_brevet.checkpoints.length) {
+                                        return false;  // break the loop
                                     }
-                                    const curRow = data.controls[row_count];
-                                    const rowKm = Object.keys(curRow)[0];
-                                    const rowLoc = Object.values(curRow)[0];
-                                    const controlEntry = $(this);
-                                    const miles = (0.621371 * parseFloat(rowKm)).toFixed(6);
 
-                                    controlEntry.find("input[name='km']").val(rowKm).trigger('input');
-                                    controlEntry.find("input[name='location']").val(rowLoc).change();
-                                    controlEntry.find("input[name='miles']").val(miles).trigger('input');
-                                    calcTimes(controlEntry);
+                                    // Get data for the current row from the brevet data
+                                    var current = last_brevet.checkpoints[row_count];
+                                    var kilometers = current.distance;
+                                    var openning = current.open_time;
+                                    var closing = current.close_time;
 
-                                    // Trigger 'input' event for miles
-                                    controlEntry.find("input[name='miles']").trigger('input');
+                                     // Set values for various input fields in the current control row
+                                    $(this).find("input[name='km']").val(kilometers)
+                                    $(this).find("input[name='miles']").val((0.621371 * kilometers).toFixed(6))
 
+                                    if ("location" in current) {
+                                        $(this).find("input[name='location']").val(current.location);
+                                    }
+                                    $(this).find("input[name='open']").val(moment(openning).format("YYYY-MM-DDTHH:mm"));
+                                    $(this).find("input[name='close']").val(moment(closing).format("YYYY-MM-DDTHH:mm"));
                                     row_count++;
                                 });
+                                
                             })
                             .fail(function(err) {
                                 // Handle the error by displaying a message on the UI
@@ -261,12 +293,10 @@
                                 $("#error-message-container").text(errorMessage).show();
                                 // You can also log the error to the console for debugging purposes
                                 console.error("Error:", err);
-                            });
+                        });
                     });
-
                 });
             </script>
-
         </div>
     </body>
 </html>
